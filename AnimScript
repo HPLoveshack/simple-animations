@@ -1,0 +1,160 @@
+using UnityEngine;
+using System.Collections;
+
+public class Spring {
+
+	public float startState;
+	public float state;
+	public float targetState;
+	public float springStrength;
+	
+	public Spring (float startState, float targetState, float springStrength) {
+		this.startState = startState;
+		this.targetState = targetState;
+		this.state = startState;
+		this.springStrength = springStrength;
+	}
+	
+	public void Set (float startState, float targetState, float springStrength) {
+		this.startState = startState;
+		this.targetState = targetState;
+		this.state = startState;
+		this.springStrength = springStrength;
+	}
+
+	public void Update () {
+		this.state = Mathf.MoveTowards (state, targetState, springStrength * Time.deltaTime * 0.1f);
+	}
+}
+
+public class SimpleAnim {
+	public Vector3 start;
+	public Vector3 finish;
+	public Vector3 current;
+	public Vector3 speed;
+
+	public bool atStart;
+	public bool atFinish;
+	public bool inProgress;
+	
+	private float xSpeed;
+	private float ySpeed;
+	private float zSpeed;
+
+	public Spring xSpring;
+	public Spring ySpring;
+	public Spring zSpring;
+
+	public SimpleAnim (Vector3 start, Vector3 finish, Vector3 speed) {
+		this.start = start;
+		this.finish = finish;
+		this.speed = speed;
+	}
+
+	public void Initialize () {
+		xSpring = new Spring (start.x, start.x, speed.x);
+		ySpring = new Spring (start.y, start.y, speed.y);
+		zSpring = new Spring (start.z, start.z, speed.z);
+	}
+
+	public void Reverse () {
+		xSpring.Set(finish.x, start.x, speed.x);
+		ySpring.Set(finish.y, start.y, speed.y);
+		zSpring.Set(finish.z, start.z, speed.z);
+		atFinish = false;
+		atStart = false;
+		inProgress = true;
+	}
+
+	public void Forward () {
+		xSpring.Set(start.x, finish.x, speed.x);
+		ySpring.Set(start.y, finish.y, speed.y);
+		zSpring.Set(start.z, finish.z, speed.z);
+		atStart = false;
+		atFinish = false;
+		inProgress = true;
+	}
+	
+	public void Update () {
+		current.x = xSpring.state;
+		current.y = ySpring.state;
+		current.z = zSpring.state;
+
+		xSpring.Update ();
+		ySpring.Update ();
+		zSpring.Update ();
+
+		if(xSpring.state == finish.x && ySpring.state == finish.y && zSpring.state == finish.z) {
+			atFinish = true;
+			atStart = false;
+			inProgress = false;
+		} else if(xSpring.state == start.x && ySpring.state == start.y && zSpring.state == start.z) {
+			atStart = true;
+			atFinish = false;
+			inProgress = false;
+		} else {
+			inProgress = true;
+			atStart = false;
+			atFinish = false;
+		}
+	}
+}
+	
+
+public class AnimationScript : MonoBehaviour {
+	
+	public GameObject slide;
+	public GameObject receiver;
+	public GameObject anchorPoint;
+	public Vector3 localOffset;
+
+	public float slideSpd = 80f;
+
+	private Vector3 openPosition;
+	private Vector3 closedPosition; 
+	private Vector3 slideSpeed;
+
+	private SimpleAnim slideAnim;
+	private Spring slideSpring;
+
+	public bool atStart;
+	public bool atFinish;
+	public bool inProgress;
+
+
+	// Use this for initialization
+	void Start () {
+
+		//set up the slide animation
+		localOffset = anchorPoint.transform.localPosition - slide.transform.localPosition;
+		closedPosition = slide.transform.localPosition;
+		openPosition = new Vector3(-0.5f,0f,0f) + slide.transform.localPosition;
+		slideSpeed = new Vector3(slideSpd,0f,0f);
+
+		slideAnim = new SimpleAnim (closedPosition, openPosition, slideSpeed);
+		slideAnim.Initialize ();
+	
+	}
+	
+	// Update is called once per frame
+	void Update () {
+
+		if(Input.GetAxis ("Fire1") == 1 && slideAnim.atStart) 
+		{
+			slideAnim.Forward();
+		}
+		if(slideAnim.atFinish) {
+			slideAnim.Reverse();
+		}
+
+		slide.transform.localPosition = new Vector3(slideAnim.current.x, anchorPoint.transform.localPosition.y - localOffset.y, anchorPoint.transform.localPosition.z - localOffset.z);
+
+
+		atStart = slideAnim.atStart;
+		atFinish = slideAnim.atFinish;
+		inProgress = slideAnim.inProgress;
+
+		slideAnim.Update ();
+
+	}
+}
